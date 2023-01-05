@@ -7,7 +7,7 @@ def main():
     invocation1='noiserecorder --help'
     invocation1Description='Generates this help message'
     invocation2='noiserecorder'
-    invocation2Description='Generates 30 minutes (notice that this will take about 8 hours) of noise written to a dated file.'
+    invocation2Description='Generates 30 minutes (notice that this will take about 8 hours [30min (desired)*16 (number of bits per sample)=8hrs]) of noise written to a dated file.'
     invocation3='noiserecorder pathname/filename.wav'
     invocation3Description='Generates 30 minutes of noise written to a specific path.'
     invocation4='noiserecorder pathname/filename.wav <duration_in_seconds>'
