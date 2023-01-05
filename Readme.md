@@ -32,7 +32,6 @@ Generates specified duration of noise written to a specific path.
 
 The following packages are needed:
 
-
 * altgraph
 * auto-py-to-exe
 * bottle
