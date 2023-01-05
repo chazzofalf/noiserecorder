@@ -33,9 +33,8 @@ def main():
         stderr.buffer.write(mesg)
         stderr.buffer.flush()
     else:
-        from datetime import datetime
-        tz=datetime.utcnow().astimezone().tzinfo
-        now_=datetime.now(tz=tz) # Use the timezone. We are getting bad errors at 5PM (The interpreter things it is 11PM at 5PM for some reason otherwise)!
+        from datetime import datetime        
+        now_=datetime.utcnow() # Use the timezone. We are getting bad errors at 5PM (The interpreter things it is 11PM at 5PM for some reason otherwise)!
         time_default=30*60
         year=now_.year
         month=now_.month
