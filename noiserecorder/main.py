@@ -34,7 +34,7 @@ def main():
         stderr.buffer.flush()
     else:
         from datetime import datetime
-        tz=str(datetime.utcnow().astimezone().tzinfo)
+        tz=datetime.utcnow().astimezone().tzinfo
         now_=datetime.now(tz=tz) # Use the timezone. We are getting bad errors at 5PM (The interpreter things it is 11PM at 5PM for some reason otherwise)!
         time_default=30*60
         year=now_.year
