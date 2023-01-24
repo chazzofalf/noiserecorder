@@ -1,3 +1,4 @@
+from getpass import getpass
 def main():   
     version='0.0'
     product='Noise Recorder'
@@ -12,6 +13,8 @@ def main():
     invocation3Description='Generates 30 minutes of noise written to a specific path.'
     invocation4='noiserecorder pathname/filename.wav <duration_in_seconds>'
     invocation4Description='Generates specified duration of noise written to a specific path.'
+    invocation5='noiserecorder --recover pathname/filename.wav'
+    invocation5Description='Recovery for when system reboots or program crashes during run'
     mesg=[f'{product} v. {version}\n',
           f'{author} ({email})\n',
           f'{description}\n',
@@ -23,7 +26,9 @@ def main():
           f'{invocation3}\n',
           f'\t{invocation3Description}\n',
           f'{invocation4}\n',
-          f'\t{invocation4Description}']
+          f'\t{invocation4Description}',
+          f'{invocation5}\n',
+          f'\t{invocation5Description}']
     mesg = '\n'.join(mesg)
     mesg = bytes(mesg,encoding='utf8')    
     invalid=False
@@ -32,6 +37,11 @@ def main():
     if len(argv) == 2 and argv[1] == '--help':
         stderr.buffer.write(mesg)
         stderr.buffer.flush()
+    elif len(argv) == 3 and argv[1] == '--recover':
+        filepath=argv[2]
+        rp=getpass('Recovery Password (Recovery): ')
+        from noiserecorder.noiserecorder import recovernoisefile as rnf
+        rnf(filepath,rp)
     else:
         from datetime import datetime        
         now_=datetime.utcnow() # Use the timezone. We are getting bad errors at 5PM (The interpreter things it is 11PM at 5PM for some reason otherwise)!
@@ -77,14 +87,15 @@ def main():
             stderr.buffer.flush()
         else:        
             from noiserecorder.noiserecorder import savenoisefile as snf
-            tab=' '*4
+            tab=' '*4            
+            rp = getpass(prompt="Recovery Password: ")
             msg = 'Recording ' + str(time) + ' second long noise the following file: ' + file + '\n' +\
                 'This will take ' + str(time*16) + ' seconds.'
             msg = bytes(msg,encoding='utf8')
             from sys import stderr
             stderr.buffer.write(msg)
             stderr.buffer.flush()        
-            snf(file,time)
+            snf(file,time,rp)
 
 
 if __name__ == '__main__':
