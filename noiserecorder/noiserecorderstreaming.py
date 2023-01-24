@@ -79,7 +79,7 @@ class SaveNoise(object):
                     bytesbuff=bytearray()
                     buf=bytearray()
                     size_max=44112*4
-                    
+                    ts=0.0
                     cipher=AES.new(key=key,IV=iv,mode=AES.MODE_CBC)
                     meth_in = cipher.decrypt              
                     r_data = read_it(size_max)
@@ -131,7 +131,7 @@ class SaveNoise(object):
                         if not write_finished:
                             te=thread_time()
                             td=te-ts
-                            st=td*10
+                            st=td*100
                             sleepx(st)
                     if len(bytesbuff) > 0:
                         wf.writeframesraw(bytesbuff)
