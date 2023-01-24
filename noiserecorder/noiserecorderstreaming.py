@@ -84,7 +84,8 @@ class SaveNoise(object):
                     meth_in = cipher.decrypt              
                     r_data = read_it(size_max)
                     while len(r_data) > 0 or not write_finished:
-                        ts=thread_time()
+                        if not write_finished:
+                            ts=thread_time()
                         if len(r_data) > 0 and len(r_data) % cipher.block_size != 0:
                             r_data=bytearray(r_data)
                             while len(r_data) % cipher.block_size != 0:
@@ -126,11 +127,12 @@ class SaveNoise(object):
                                     wf.writeframesraw(bytesbuff)                
                                     bytesbuff.clear()
                                 
-                        r_data = read_it(size_max)
-                        te=thread_time()
-                        td=te-ts
-                        st=td*10
-                        sleepx(st)
+                        r_data = read_it(size_max)                        
+                        if not write_finished:
+                            te=thread_time()
+                            td=te-ts
+                            st=td*10
+                            sleepx(st)
                     if len(bytesbuff) > 0:
                         wf.writeframesraw(bytesbuff)
                     wf.close()                    
