@@ -80,7 +80,7 @@ def main():
             snfo=snfc()
             snf=snfo.savenoisefile
             tab=' '*4
-            msg = 'Recording ' + str(time) + ' second long noise the following file: ' + file + '\n' +\
+            msg = 'Recording ' + str(time) + ' second long noise to the following file: ' + file + '\n' +\
                 'This will take ' + str(time*16) + ' seconds.'
             msg = bytes(msg,encoding='utf8')
             from sys import stderr
