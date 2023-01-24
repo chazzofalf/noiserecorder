@@ -90,5 +90,5 @@ def main():
 
 
 if __name__ == '__main__':
-    from noiserecorder.main import main
+    from noiserecorder.main_streaming import main
     main()
