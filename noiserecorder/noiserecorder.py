@@ -13,9 +13,10 @@ class Ref(Generic[C]):
     @value.setter
     def value(self,value):
         self.__value = value
-
-
-def recovernoise(output:RawIOBase,recovery_password:str,kf:FileIO,ivf:FileIO,tf:FileIO):  
+def checkrecoverypassword(name:str,recovery_password:str) -> bool:
+    kf = FileIO(file=f'{name}.key',mode='r')
+    return checkrecoverypassword_(recovery_password,kf)
+def checkrecoverypassword_(recovery_password:str,kf:FileIO) -> bool:
     rp=recovery_password
     rp=bytes(rp,encoding='utf8')
     from time import sleep as sleepx  
@@ -31,73 +32,35 @@ def recovernoise(output:RawIOBase,recovery_password:str,kf:FileIO,ivf:FileIO,tf:
     rp=rp[:16]
     rkiv=rp
     from Crypto.Cipher import AES 
-    cipher= AES.new(key=rkk,iv=rkiv,mode=AES.MODE_CBC)
-    cipher2= AES.new(key=rkk,iv=rkiv,mode=AES.MODE_CBC)
-    meth_in=cipher.decrypt
-    meth_in_2=cipher2.decrypt
-    key=meth_in(kf.readall())
-    iv=meth_in_2(ivf.readall())
+    cipher= AES.new(key=rkk,iv=rkiv,mode=AES.MODE_CBC)    
+    meth_in=cipher.decrypt    
+    keydata=meth_in(kf.readall())        
     kf.close()
-    ivf.close()
-    cipher = AES.new(key=key,IV=iv,mode=AES.MODE_CBC)
-    meth_in=cipher.decrypt
-    import wave
-    with wave.open(output,mode='wb') as wfa: 
-        wf:wave.Wave_write=wfa
-        wf.setframerate(44100)
-        wf.setnchannels(2)
-        wf.setsampwidth(2)
-        bytesbuff=bytearray()
-        shortBuffA=bytearray()
-        shortBuffB=bytearray()
-        shortBuffAO=bytearray()
-        shortBuffBO=bytearray()
-        byteA=0
-        byteB=0
-        idxA=0
-        idxB=0
-        idx=0        
-        tf.seek(0)
-        cipher = AES.new(key=key,IV=iv,mode=AES.MODE_CBC)
-        meth_out = cipher.encrypt
-        meth_in = cipher.decrypt
-        ind =  meth_in(tf.read(4*44100))
-        while ind is not None and len(ind) > 0:
-            for f in bytes(ind):                
-                if len(shortBuffA) < 2:
-                    shortBuffA.append(f)
-                else:
-                    shortBuffB.append(f)
-                if len(shortBuffB) == 2:
-                    byteA <<= 1
-                    byteB <<= 1
-                    byteA |= (shortBuffA[0] & 1)
-                    byteB |= (shortBuffB[0] & 1)                
-                    shortBuffA.clear()
-                    shortBuffB.clear()
-                    idx += 1
-                if idx == 8:
-                    shortBuffAO.append(byteA)
-                    shortBuffBO.append(byteB)
-                    byteA = 0
-                    byteB = 0
-                    idx = 0
-                if len(shortBuffAO) == 2:
-                    bytesbuff.extend(shortBuffAO)
-                    bytesbuff.extend(shortBuffBO)    
-                    shortBuffAO.clear()
-                    shortBuffBO.clear()
-                if len(bytesbuff) == 4*44100:
-                    wf.writeframesraw(bytesbuff)                
-                    bytesbuff.clear()
-            ind = tf.read(4*44100)
-        if len(bytesbuff) > 0:
-            wf.writeframesraw(bytesbuff)
-            wf.close()
-    tf.close()  
-def savenoise(output:RawIOBase,recovery_password:str,kf:FileIO,ivf:FileIO,tf:FileIO,time:int):    
-    
-    rp=bytes(recovery_password,encoding='utf8')
+    valid = True
+    for _ in range(0,3):
+        hash1,keydata = (bytes(keydata[:32]),bytes(keydata[32:]))
+        dehasher=hash()
+        dehasher.update(keydata)
+        vhash=dehasher.digest()
+        def compareblocks(blockA,blockB):            
+            if len(blockA) == len(blockB):
+                def equal(a,b) -> bool:                     
+                    return a == b
+                for ff in (f for f in map( equal,blockA,blockB)):
+                    if not ff:
+                        return ff
+                return True
+            else:
+                return False        
+        if not compareblocks(hash1,vhash):
+            valid = False
+            break     
+    return valid
+def recovernoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO):  
+    rp=recovery_password
+    rp=bytes(rp,encoding='utf8')
+    from time import sleep as sleepx  
+    from sounddevice import RawInputStream as ris
     from Crypto.Hash.SHA256 import new as hash
     ho=hash()
     ho.update(rp)
@@ -109,23 +72,129 @@ def savenoise(output:RawIOBase,recovery_password:str,kf:FileIO,ivf:FileIO,tf:Fil
     rp=rp[:16]
     rkiv=rp
     from Crypto.Cipher import AES 
-    cipher= AES.new(key=rkk,iv=rkiv,mode=AES.MODE_CBC)
-    cipher2= AES.new(key=rkk,iv=rkiv,mode=AES.MODE_CBC)
-    meth_out=cipher.encrypt
-    meth_out_2=cipher2.encrypt
+    cipher= AES.new(key=rkk,iv=rkiv,mode=AES.MODE_CBC)    
+    meth_in=cipher.decrypt    
+    keydata=meth_in(kf.readall())        
+    kf.close()
+    valid = True
+    for _ in range(0,3):
+        hash1,keydata = (bytes(keydata[:32]),bytes(keydata[32:]))
+        dehasher=hash()
+        dehasher.update(keydata)
+        vhash=dehasher.digest()
+        def compareblocks(blockA,blockB):
+            if len(blockA) == len(blockB):
+                def equal(a,b) -> bool:
+                    return a == b
+                for ff in (f for f in map( equal,blockA,blockB)):
+                    if not ff:
+                        return ff
+                return True
+            else:
+                return False
+        if not compareblocks(hash1,vhash):
+            valid = False
+            break     
+    if valid: 
+        keydata = (keydata[4096:])
+        key = keydata[:32]
+        iv = keydata[32:]
+        cipher = AES.new(key=key,IV=iv,mode=AES.MODE_CBC)
+        meth_in=cipher.decrypt
+        import wave
+        with wave.open(output,mode='wb') as wfa: 
+            wf:wave.Wave_write=wfa
+            wf.setframerate(44100)
+            wf.setnchannels(2)
+            wf.setsampwidth(2)
+            bytesbuff=bytearray()
+            shortBuffA=bytearray()
+            shortBuffB=bytearray()
+            shortBuffAO=bytearray()
+            shortBuffBO=bytearray()
+            byteA=0
+            byteB=0        
+            idx=0        
+            tf.seek(0)
+            cipher = AES.new(key=key,IV=iv,mode=AES.MODE_CBC)        
+            meth_in = cipher.decrypt
+            ind =  meth_in(tf.read(4*44100))
+            while ind is not None and len(ind) > 0:
+                for f in bytes(ind):                
+                    if len(shortBuffA) < 2:
+                        shortBuffA.append(f)
+                    else:
+                        shortBuffB.append(f)
+                    if len(shortBuffB) == 2:
+                        byteA <<= 1
+                        byteB <<= 1
+                        byteA |= (shortBuffA[0] & 1)
+                        byteB |= (shortBuffB[0] & 1)                
+                        shortBuffA.clear()
+                        shortBuffB.clear()
+                        idx += 1
+                    if idx == 8:
+                        shortBuffAO.append(byteA)
+                        shortBuffBO.append(byteB)
+                        byteA = 0
+                        byteB = 0
+                        idx = 0
+                    if len(shortBuffAO) == 2:
+                        bytesbuff.extend(shortBuffAO)
+                        bytesbuff.extend(shortBuffBO)    
+                        shortBuffAO.clear()
+                        shortBuffBO.clear()
+                    if len(bytesbuff) == 4*44100:
+                        wf.writeframesraw(bytesbuff)                
+                        bytesbuff.clear()
+                ind = tf.read(4*44100)
+            if len(bytesbuff) > 0:
+                wf.writeframesraw(bytesbuff)
+                wf.close()
+        tf.close()                     
+def savenoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO,time:int):        
+    rp=bytes(recovery_password,encoding='utf8')
+    from Crypto.Hash.SHA256 import new as hash
+    from Crypto.Random import get_random_bytes as grb
+    ho=hash()
+    ho.update(rp)
+    rp=ho.digest()
+    rkk=rp
+    ho=hash()
+    ho.update(rp)
+    rp=ho.digest()
+    rp=rp[:16]
+    rkiv=rp        
+    from Crypto.Cipher import AES 
+    cipher= AES.new(key=rkk,iv=rkiv,mode=AES.MODE_CBC)    
+    meth_out=cipher.encrypt    
     from sounddevice import RawInputStream as ris
     from time import sleep as sleepx
     import wave
-    with wave.open(output,mode='wb') as wfa:        
-        from Crypto.Random import get_random_bytes
-        key=get_random_bytes(32)
-        iv=get_random_bytes(16)
-        kf.write(meth_out(key))
+    with wave.open(output,mode='wb') as wfa:                
+        key=grb(32)
+        iv=grb(16)
+        salt=grb(4096)
+        def combo():
+            def c1():
+                for f in [salt,rkk,rkiv]:
+                    for ff in f:
+                        yield ff
+            b=bytes([f for f in c1()])
+            for _ in range(0,3):
+                hclhh=hash()
+                hclhh.update(b)
+                h=hclhh.digest()
+                def c2():
+                    for f in [h,b]:
+                        for ff in f:
+                            yield ff
+                b = bytes([f for f in c2()])
+            return b
+        kfc=bytes([f for f in combo()])                       
+        kf.write(meth_out(kfc))
         kf.flush()
-        kf.close()
-        ivf.write(meth_out_2(iv))
-        ivf.flush()
-        ivf.close()
+        kf.close()        
         cipher = AES.new(key=key,IV=iv,mode=AES.MODE_CBC)
         meth_out = cipher.encrypt
         meth_in = cipher.decrypt
@@ -139,9 +208,7 @@ def savenoise(output:RawIOBase,recovery_password:str,kf:FileIO,ivf:FileIO,tf:Fil
         shortBuffAO=bytearray()
         shortBuffBO=bytearray()
         byteA=0
-        byteB=0
-        idxA=0
-        idxB=0
+        byteB=0        
         idx=0
         def cb(ind,frames,time,status):
             tf.write(meth_out(bytes(ind)))                            
@@ -187,20 +254,16 @@ def savenoise(output:RawIOBase,recovery_password:str,kf:FileIO,ivf:FileIO,tf:Fil
     tf.close()    
 def savenoisefile(name:str,time:int,recovery_password:str):
     f = FileIO(file=name,mode='w')
-    kf = FileIO(file=f'{name}.key',mode='w')
-    ivf = FileIO(file=f'{name}.iv',mode='w')
+    kf = FileIO(file=f'{name}.key',mode='w')    
     tf = FileIO(file=f'{name}.tmp',mode='w+')
-    savenoise(f,recovery_password,kf,ivf,tf,time)    
+    savenoise(f,recovery_password,kf,tf,time)    
     f.close()    
     from os import remove
-    _ = [remove(f) for f in [kf.name,ivf.name,tf.name]]
+    _ = [remove(f) for f in [kf.name,tf.name]]
 def recovernoisefile(name:str,recovery_password:str):
     f = FileIO(file=name,mode='w')
-    kf = FileIO(file=f'{name}.key',mode='r')
-    ivf = FileIO(file=f'{name}.iv',mode='r')
+    kf = FileIO(file=f'{name}.key',mode='r')    
     tf = FileIO(file=f'{name}.tmp',mode='r')
-    recovernoise(f,recovery_password,kf,ivf,tf)
+    recovernoise(f,recovery_password,kf,tf)
     f.close()
-    
-    
     

@@ -41,7 +41,22 @@ def main():
         filepath=argv[2]
         rp=getpass('Recovery Password (Recovery): ')
         from noiserecorder.noiserecorder import recovernoisefile as rnf
-        rnf(filepath,rp)
+        from noiserecorder.noiserecorder import checkrecoverypassword as crp  
+        bad_tries=0             
+        while not crp(filepath,rp):
+            bad_tries += 1
+            if bad_tries < 3:
+                rp=getpass('Incorrect Password. Try again: ')
+            else:
+                from sys import stderr
+                encoding=stderr.encoding
+                msg = bytes("Failed to Authenticate after three tries. Giving up.\n",encoding=encoding)                
+                errbuf=stderr.buffer
+                errbuf.write(msg)
+                errbuf.flush()
+                break
+        if bad_tries < 3:                       
+            rnf(filepath,rp)
     else:
         from datetime import datetime        
         now_=datetime.utcnow() # Use the timezone. We are getting bad errors at 5PM (The interpreter things it is 11PM at 5PM for some reason otherwise)!
@@ -59,14 +74,12 @@ def main():
             out = None
             if isinstance(strnum,str) and isinstance(size,int):            
                 out=''.join(reversed((''.join(reversed(strnum)) + '0'*size)[:size]))
-            return out
-                
+            return out                
         (year,month,day,hour,minute,second,micros) = tuple((pad(f[0],f[1]) for f in (year,month,day,hour,minute,second,micros)))
         file_default='noiserecorder_' + ''.join((year,month,day)) + '_' + ''.join((hour,minute,second)) + '_' + micros + '.wav'
         (file,time)=(file_default,time_default)    
         if len(argv) >= 2:        
-            file=argv[1]
-            
+            file=argv[1]            
         if len(argv) == 3:        
             time_str=argv[2]
             try:
@@ -88,16 +101,25 @@ def main():
         else:        
             from noiserecorder.noiserecorder import savenoisefile as snf
             tab=' '*4            
-            rp = getpass(prompt="Recovery Password: ")
+            verified=False
+            while not verified:
+                rp = getpass(prompt="Recovery Password: ")
+                rpv = getpass(prompt="Verify: ")
+                if (rp == rpv):                                
+                    verified=True                          
+                else:
+                    msg = 'Passwords do not match. Try again!' + '\n'
+                    from sys import stderr
+                    stderr.buffer.write(msg)
+                    stderr.buffer.flush()
             msg = 'Recording ' + str(time) + ' second long noise the following file: ' + file + '\n' +\
-                'This will take ' + str(time*16) + ' seconds.'
+                        'This will take ' + str(time*16) + ' seconds.' + '\n'
             msg = bytes(msg,encoding='utf8')
             from sys import stderr
             stderr.buffer.write(msg)
-            stderr.buffer.flush()        
+            stderr.buffer.flush()  
             snf(file,time,rp)
-
-
 if __name__ == '__main__':
     from noiserecorder.main import main
     main()
+    
