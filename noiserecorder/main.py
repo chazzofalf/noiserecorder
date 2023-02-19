@@ -104,21 +104,50 @@ def main():
             verified=False
             while not verified:
                 rp = getpass(prompt="Recovery Password: ")
-                rpv = getpass(prompt="Verify: ")
+                rpv = getpass(prompt="Verify: ")                
+                
                 if (rp == rpv):                                
                     verified=True                          
                 else:
                     msg = 'Passwords do not match. Try again!' + '\n'
                     from sys import stderr
-                    stderr.buffer.write(msg)
-                    stderr.buffer.flush()
+                    print(msg)
+                    
+                    
             msg = 'Recording ' + str(time) + ' second long noise the following file: ' + file + '\n' +\
                         'This will take ' + str(time*16) + ' seconds.' + '\n'
-            msg = bytes(msg,encoding='utf8')
+            #msg = bytes(msg,encoding='utf8')
             from sys import stderr
-            stderr.buffer.write(msg)
-            stderr.buffer.flush()  
-            snf(file,time,rp)
+            # stderr.buffer.write(msg)
+            # stderr.buffer.flush()  
+            print(msg,file=stderr)
+            from threading import Thread as th
+            def call():                
+                snf(file,time,rp)
+            thx = th(target=call)
+            thx.start()
+            def timer():                
+                time_left=time*16                
+                import datetime
+                now = datetime.datetime.utcnow()
+                til = now + datetime.timedelta(seconds=time_left)
+                old_mesg=''
+                while now < til:
+                    left = til - now
+                    new_mesg = str(left)
+                    new_mesg = new_mesg.split('.')[0]
+                    print('',end='\r',file=stderr)
+                    
+                    print(' ' * len(old_mesg),end='\r',file=stderr)                
+                    print(new_mesg,end='\r',file=stderr)
+                    
+                    old_mesg=new_mesg
+                    
+                    from time import sleep
+                    sleep(1)
+                    now = datetime.datetime.utcnow()
+            thy = th(target=timer)
+            thy.start()                    
 if __name__ == '__main__':
     from noiserecorder.main import main
     main()
