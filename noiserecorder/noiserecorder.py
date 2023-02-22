@@ -65,42 +65,48 @@ def recovernoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO):
     ho=hash()
     ho.update(rp)
     rp=ho.digest()
-    rkk=rp
-    ho=hash()
-    ho.update(rp)
-    rp=ho.digest()
-    rp=rp[:16]
-    rkiv=rp
+    rkk=rp    
     from Crypto.Cipher import AES 
-    cipher= AES.new(key=rkk,iv=rkiv,mode=AES.MODE_CBC)    
+    cipher= AES.new(key=rkk,mode=AES.MODE_EAX)
+    def read_block_univ(file:FileIO,meth_in):
+        size=file.read(2)
+        if len(size) == 0:
+            return size
+        if len(size) == 2:
+            size = size[0]*256+size[1]
+        else:
+            raise IOError()
+        cmblock=file.read(size)
+        if len(cmblock) != size:
+            raise IOError()
+        from io import BytesIO
+        tfi = BytesIO(cmblock)
+        size = tfi.read(2)
+        if len(size) == 2:
+            size=size[0]*256+size[1]
+        else:
+            raise IOError()
+        m = tfi.read(size)
+        if len(m) != size:
+            raise IOError()
+        size=tf.read(2)
+        if len(size) == 2:
+            size = size[0]*256+size[1]
+        else:
+            raise IOError()
+        c = tfi.read(size)
+        if len(c) != size:
+            raise IOError()
+        return meth_in(c,m)    
     meth_in=cipher.decrypt    
-    keydata=meth_in(kf.readall())        
+    keydata=read_block_univ(kf,meth_in)       
     kf.close()
-    valid = True
-    for _ in range(0,3):
-        hash1,keydata = (bytes(keydata[:32]),bytes(keydata[32:]))
-        dehasher=hash()
-        dehasher.update(keydata)
-        vhash=dehasher.digest()
-        def compareblocks(blockA,blockB):
-            if len(blockA) == len(blockB):
-                def equal(a,b) -> bool:
-                    return a == b
-                for ff in (f for f in map( equal,blockA,blockB)):
-                    if not ff:
-                        return ff
-                return True
-            else:
-                return False
-        if not compareblocks(hash1,vhash):
-            valid = False
-            break     
-    if valid: 
-        keydata = (keydata[4096:])
-        key = keydata[:32]
-        iv = keydata[32:]
-        cipher = AES.new(key=key,IV=iv,mode=AES.MODE_CBC)
-        meth_in=cipher.decrypt
+    valid = True    
+    if valid:         
+        key = keydata       
+        cipher = AES.new(key=key,mode=AES.MODE_EAX)
+        meth_in=cipher.decrypt_and_verify
+        
         import wave
         with wave.open(output,mode='wb') as wfa: 
             wf:wave.Wave_write=wfa
@@ -116,9 +122,9 @@ def recovernoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO):
             byteB=0        
             idx=0        
             tf.seek(0)
-            cipher = AES.new(key=key,IV=iv,mode=AES.MODE_CBC)        
+            cipher = AES.new(key=key,mode=AES.MODE_EAX)        
             meth_in = cipher.decrypt
-            ind =  meth_in(tf.read(4*44100))
+            ind =  read_block_univ(tf,meth_in)
             while ind is not None and len(ind) > 0:
                 for f in bytes(ind):                
                     if len(shortBuffA) < 2:
@@ -147,7 +153,7 @@ def recovernoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO):
                     if len(bytesbuff) == 4*44100:
                         wf.writeframesraw(bytesbuff)                
                         bytesbuff.clear()
-                ind = tf.read(4*44100)
+                ind = read_block_univ(tf,meth_in)
             if len(bytesbuff) > 0:
                 wf.writeframesraw(bytesbuff)
                 wf.close()
@@ -168,27 +174,8 @@ def savenoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO,time:in
     from time import sleep as sleepx
     import wave
     with wave.open(output,mode='wb') as wfa:                
-        key=grb(32)
-        iv=grb(16)
-        salt=grb(4096)
-        def combo():
-            def c1():
-                for f in [salt,rkk]:
-                    for ff in f:
-                        yield ff
-            b=bytes([f for f in c1()])
-            for _ in range(0,3):
-                hclhh=hash()
-                hclhh.update(b)
-                h=hclhh.digest()
-                def c2():
-                    for f in [h,b]:
-                        for ff in f:
-                            yield ff
-                b = bytes([f for f in c2()])
-            return b
-        kfc=bytes([f for f in combo()]) 
-        c,m = meth_out(kfc)        
+        key=grb(32)                        
+        c,m = meth_out(key)        
         mlen=len(m)
         clen=len(c)
         mlen=bytes([m/256,m%256])  
@@ -254,12 +241,40 @@ def savenoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO,time:in
             tf_write(ind)            
         with ris(samplerate=44100,dtype='int16',channels=2,callback=cb) as ss:
             sleepx(time*16)
+        def tf_flush():
+            while len(tf_buf) > 0:
+                data=bytes(tf_buf[:1<<15])
+                remainder=bytes(tf_buf[1<<15:])
+                tf_buf.clear()
+                tf_buf.extend(remainder)
+                c,m = cipher.encrypt_and_digest(data)
+                mlen=len(m)
+                clen=len(c)
+                mlen=bytes([m/256,m%256])  
+                clen=bytes([c/256,c%256])
+                def cmblock():
+                    for f in [mlen,m,clen,c]:
+                        for ff in f:
+                            yield ff   
+                cmblock=bytes([f for f in cmblock()])
+                cmblocklen=len(cmblock)
+                cmblocklen=bytes(cmblocklen/256,cmblocklen%256)
+                def cmblock():
+                    for f in [cmblocklen,cmblock]:
+                        for ff in f:
+                            yield ff
+                cmblock=bytes([f for f in cmblock()])
+                kf.write(cmblock)                   
+                tf_buf.clear()
+        tf_flush()
         tf.seek(0)
         cipher = AES.new(key=key,mode=AES.MODE_EAX)
         meth_out = cipher.encrypt        
         meth_in = cipher.decrypt_and_verify
         def get_block():
             size=tf.read(2)
+            if len(size) == 0:
+                return size
             if len(size) == 2:
                 size = size[0]*256+size[1]
             else:
