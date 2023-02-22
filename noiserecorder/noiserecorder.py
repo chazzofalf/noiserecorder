@@ -178,15 +178,15 @@ def savenoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO,time:in
         c,m = meth_out(key)        
         mlen=len(m)
         clen=len(c)
-        mlen=bytes([m/256,m%256])  
-        clen=bytes([c/256,c%256])
+        mlen=bytes([m//256,m%256])  
+        clen=bytes([c//256,c%256])
         def cmblock():
             for f in [mlen,m,clen,c]:
                 for ff in f:
                     yield ff   
         cmblock=bytes([f for f in cmblock()])
         cmblocklen=len(cmblock)
-        cmblocklen=bytes(cmblocklen/256,cmblocklen%256)
+        cmblocklen=bytes([cmblocklen//256,cmblocklen%256])
         def cmblock():
             for f in [cmblocklen,cmblock]:
                 for ff in f:
@@ -221,15 +221,15 @@ def savenoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO,time:in
                 c,m = cipher.encrypt_and_digest(data)
                 mlen=len(m)
                 clen=len(c)
-                mlen=bytes([m/256,m%256])  
-                clen=bytes([c/256,c%256])
+                mlen=bytes([m//256,m%256])  
+                clen=bytes([c//256,c%256])
                 def cmblock():
                     for f in [mlen,m,clen,c]:
                         for ff in f:
                             yield ff   
                 cmblock=bytes([f for f in cmblock()])
                 cmblocklen=len(cmblock)
-                cmblocklen=bytes(cmblocklen/256,cmblocklen%256)
+                cmblocklen=bytes([cmblocklen/256,cmblocklen%256])
                 def cmblock():
                     for f in [cmblocklen,cmblock]:
                         for ff in f:
@@ -250,15 +250,15 @@ def savenoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO,time:in
                 c,m = cipher.encrypt_and_digest(data)
                 mlen=len(m)
                 clen=len(c)
-                mlen=bytes([m/256,m%256])  
-                clen=bytes([c/256,c%256])
+                mlen=bytes([m//256,m%256])  
+                clen=bytes([c//256,c%256])
                 def cmblock():
                     for f in [mlen,m,clen,c]:
                         for ff in f:
                             yield ff   
                 cmblock=bytes([f for f in cmblock()])
                 cmblocklen=len(cmblock)
-                cmblocklen=bytes(cmblocklen/256,cmblocklen%256)
+                cmblocklen=bytes([cmblocklen//256,cmblocklen%256])
                 def cmblock():
                     for f in [cmblocklen,cmblock]:
                         for ff in f:
