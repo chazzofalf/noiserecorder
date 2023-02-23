@@ -92,6 +92,23 @@ def recovernoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO):
     rnonce=rp[:16]
     from Crypto.Cipher import AES 
     cipher= AES.new(key=rkk,nonce=rnonce,mode=AES.MODE_EAX)
+    def read_next_valid_block(file:FileIO,key):
+        # For recovery. 
+        # There is chance the program was forcibly closed and there may be a
+        # bad/partial block at the end of the file as of result. 
+        # This helps ensure they are ignored and do not break the recovery process.
+        valid=False
+        valid_block=None
+        block=None
+        while not valid:
+            try:
+                block=read_block_univ(file,key)
+                valid=True
+                valid_block=block
+            except:
+                print('Bad Block Found. Ignored and skipped during recovery process.')
+        return valid_block
+            
     def read_block_univ(file:FileIO,key):
         size=file.read(2)
         if len(size) == 0:
@@ -152,7 +169,7 @@ def recovernoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO):
             byteB=0        
             idx=0        
             tf.seek(0)            
-            ind =  read_block_univ(tf,key)
+            ind =  read_next_valid_block(tf,key)
             while ind is not None and len(ind) > 0:
                 for f in bytes(ind):                
                     if len(shortBuffA) < 2:
@@ -181,7 +198,7 @@ def recovernoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO):
                     if len(bytesbuff) == 4*44100:
                         wf.writeframesraw(bytesbuff)                
                         bytesbuff.clear()
-                ind = read_block_univ(tf,key)
+                ind = read_next_valid_block(tf,key)
             if len(bytesbuff) > 0:
                 wf.writeframesraw(bytesbuff)
                 wf.close()
