@@ -14,9 +14,11 @@ class Ref(Generic[C]):
     def value(self,value):
         self.__value = value
 def checkrecoverypassword(name:str,recovery_password:str) -> bool:
-    kf = FileIO(file=f'{name}.key',mode='r')
-    return checkrecoverypassword_(recovery_password,kf)
-def checkrecoverypassword_(recovery_password:str,kf:FileIO) -> bool:
+    tf = FileIO(file=f'{name}.tmp',mode='r')
+    valid = checkrecoverypassword_(recovery_password,tf)
+    tf.close()
+    return valid
+def checkrecoverypassword_(recovery_password:str,tf:FileIO) -> bool:
     rp=recovery_password
     rp=bytes(rp,encoding='utf8')
     from time import sleep as sleepx  
@@ -72,11 +74,11 @@ def checkrecoverypassword_(recovery_password:str,kf:FileIO) -> bool:
         return meth_in(c,m)    
     meth_in=cipher.decrypt_and_verify    
     try:
-        _=read_block_univ(kf,meth_in) 
+        _=read_block_univ(tf,meth_in) 
         return True        
     except:
        return False    
-def recovernoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO):  
+def recovernoise(output:RawIOBase,recovery_password:str,tf:FileIO):  
     rp=recovery_password
     rp=bytes(rp,encoding='utf8')
     from time import sleep as sleepx  
@@ -106,7 +108,7 @@ def recovernoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO):
                 valid=True
                 valid_block=block
             except:
-                print('Bad Block Found. Ignored and skipped during recovery process.')
+                print('Partial Block Found. This was ignored.')
         return valid_block
             
     def read_block_univ(file:FileIO,key):
@@ -148,8 +150,7 @@ def recovernoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO):
             raise IOError()
         cipher= AES.new(key=key,nonce=n,mode=AES.MODE_EAX)
         return cipher.decrypt_and_verify(c,m)          
-    keydata=read_block_univ(kf,rkk)       
-    kf.close()
+    keydata=read_block_univ(tf,rkk)           
     valid = True    
     if valid:         
         key = keydata               
@@ -203,7 +204,7 @@ def recovernoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO):
                 wf.writeframesraw(bytesbuff)
                 wf.close()
         tf.close()                     
-def savenoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO,time:int):        
+def savenoise(output:RawIOBase,recovery_password:str,tf:FileIO,time:int):        
     rp=bytes(recovery_password,encoding='utf8')
     from Crypto.Hash.SHA256 import new as hash
     from Crypto.Random import get_random_bytes as grb
@@ -250,9 +251,7 @@ def savenoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO,time:in
                 for ff in f:
                     yield ff
         cmblock_=bytes([f for f in cmblock()])
-        kf.write(cmblock_)                    
-        kf.flush()
-        kf.close()        
+        tf.write(cmblock_)                                    
         cipher = AES.new(key=key,mode=AES.MODE_EAX)
         meth_out = cipher.encrypt_and_digest
         meth_in = cipher.decrypt
@@ -337,6 +336,16 @@ def savenoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO,time:in
                 tf_buf.clear()
         tf_flush()
         tf.seek(0)
+        def skip_block():
+            size=tf.read(2)
+            if len(size) == 0:
+                return size
+            if len(size) == 2:
+                size = size[0]*256+size[1]
+            else:
+                raise IOError()
+            _ = tf.read(size)
+        skip_block()
         cipher = AES.new(key=key,mode=AES.MODE_EAX)
         meth_out = cipher.encrypt        
         meth_in = cipher.decrypt_and_verify
@@ -414,17 +423,15 @@ def savenoise(output:RawIOBase,recovery_password:str,kf:FileIO,tf:FileIO,time:in
             wf.close()
     tf.close()    
 def savenoisefile(name:str,time:int,recovery_password:str):
-    f = FileIO(file=name,mode='w')
-    kf = FileIO(file=f'{name}.key',mode='w')    
+    f = FileIO(file=name,mode='w')    
     tf = FileIO(file=f'{name}.tmp',mode='w+')
-    savenoise(f,recovery_password,kf,tf,time)    
+    savenoise(f,recovery_password,tf,time)    
     f.close()    
     from os import remove
-    _ = [remove(f) for f in [kf.name,tf.name]]
+    _ = [remove(f) for f in [tf.name]]
 def recovernoisefile(name:str,recovery_password:str):
     f = FileIO(file=name,mode='w')
-    kf = FileIO(file=f'{name}.key',mode='r')    
     tf = FileIO(file=f'{name}.tmp',mode='r')
-    recovernoise(f,recovery_password,kf,tf)
+    recovernoise(f,recovery_password,tf)
     f.close()
     
