@@ -108,12 +108,12 @@ Windows powershell/pwsh (A virtual environment installed using Windows Store Pyt
 * pefile
 * pip (You don't have to install this venv/virtualenv should have done this for you.)
 * pycparser
-* pycryptodome
+* pycryptodome (Encryption added for the peace of mind and privacy of any would be noise collector.)
 * pyinstaller
 * pyinstaller-hooks-contrib
 * pyparsing
-* setuptools (Same as pip installed by virtual/venv already)
-* sounddevice
+* setuptools (Same as pip, installed by virtual/venv already)
+* sounddevice (Lets grab some sound and make some noise with it!)
 * whichcraft
 * zope.event
 * zope.interface
