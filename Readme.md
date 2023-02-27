@@ -149,7 +149,7 @@ bash:
 
 ```bash
 # $PATH_TO_NOISERECORDER_SOURCE_MODULE is a stand-in for the actual path to your checked out copy of the noiserecorder module.
-python install $PATH_TO_NOISERECORDER_SOURCE_MODULE # It is the folder that contains setup.py
+python -m pip install $PATH_TO_NOISERECORDER_SOURCE # It is the top of this project folder that contains setup.py and this Readme.md file, it is NOT the inner noiserecorder package folder that contains __init__.py and friends.
 ```
 
 pwsh (Windows):
@@ -157,5 +157,5 @@ pwsh (Windows):
 ```pwsh
 # $env:PATH_TO_NOISERECORDER_SOURCE_MODULE is a stand-in for the actual path to your checked out out copy of the noiserecorder module.
 cd $env:PATH_TO_NOISERECORDER_SOURCE_MODULE
-& python install $env:PATH_TO_NOISERECORDER_SOURCE_MODULE # It is the folder that contains setup.py
+& python -m pip install $env:PATH_TO_NOISERECORDER_SOURCE # It is the folder that contains setup.py and this Readme.md file, it is NOT the inner noiserecorder package folder that contains __init__.py and friends.
 ```
