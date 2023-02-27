@@ -80,6 +80,18 @@ Exit Windows Store Python:
 exit()
 ```
 
+If you encounter access denied issues attempting to run python from the pwsh subshell, try this in the windows store python interactive shell (One line at a time):
+
+Python:
+
+```python showLineNumbers
+import venv
+import os
+userdir = os.environ['USERPROFILE']
+venv.create(userdir + '\path\to\noiserecorder_venv',with_pip=True,upgrade_deps=True)
+exit()
+```
+
 Enter your virtual environment:
 
 bash:
