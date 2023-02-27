@@ -1,6 +1,6 @@
 # Noise Recorder #
 
-A retrieves white noise from the environment via the microphone and extracting the least significant bit.
+Retrieves white noise from the environment via the microphone and extracting the least significant bit.
 
 ## Invocation (Refer to steps below for installation) ##
 
