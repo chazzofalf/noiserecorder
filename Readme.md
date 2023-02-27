@@ -2,28 +2,28 @@
 
 A retrieves white noise from the environment via the microphone and extracting the least significant bit.
 
-## Invocation ##
+## Invocation (Refer to steps below for installation) ##
 
 ```console
-noiserecorder --help
+python -m noiserecorder --help
 ```
 
 Brings up help.
 
 ```console
-noiserecorder
+python -m noiserecorder
 ```
 
 Generates 30 minutes (The user should be warned that this will take about 8 hours [30min (desired time)*16 (number of bits per sample)=8hrs]) of noise written to a dated file.
 
 ```console
-noiserecorder pathname/filename.wav
+python -m noiserecorder pathname/filename.wav
 ```
 
 Generates 30 minutes of noise written to a specific path.
 
 ```console
-noiserecorder pathname/filename.wav <duration_in_seconds>
+python -m noiserecorder pathname/filename.wav <duration_in_seconds>
 ```
 
 Generates specified duration of noise written to a specific path.
@@ -141,4 +141,21 @@ pwsh (Windows):
 'pycryptodome','pyinstaller','pyinstaller-hooks-contrib','pyparsing',
 'sounddevice','whichcraft','zope.event','zope.interface') |
 ForEach-Object {& python -m pip install "$_"}
+```
+
+Install noiserecorder itself:
+
+bash:
+
+```bash
+# $PATH_TO_NOISERECORDER_SOURCE_MODULE is a stand-in for the actual path to your checked out copy of the noiserecorder module.
+python install $PATH_TO_NOISERECORDER_SOURCE_MODULE # It is the folder that contains setup.py
+```
+
+pwsh (Windows):
+
+```pwsh
+# $env:PATH_TO_NOISERECORDER_SOURCE_MODULE is a stand-in for the actual path to your checked out out copy of the noiserecorder module.
+cd $env:PATH_TO_NOISERECORDER_SOURCE_MODULE
+& python install $env:PATH_TO_NOISERECORDER_SOURCE_MODULE # It is the folder that contains setup.py
 ```
