@@ -114,28 +114,28 @@ def main():
                     print(msg)
                     
                     
-            msg = 'Recording ' + str(time) + ' second long noise the following file: ' + file + '\n' +\
-                        'This will take ' + str(time*16) + ' seconds.' + '\n'
-            #msg = bytes(msg,encoding='utf8')
-            from sys import stderr
-            # stderr.buffer.write(msg)
-            # stderr.buffer.flush()  
-            print(msg,file=stderr)
+            
             from threading import Thread as th
             def call():                
-                snf(file,time,rp)
+                snf(file,time,rp,pr)
+            pr=[0]
             thx = th(target=call)
             thx.start()
             def timer():                
-                time_left=time*16                
-                import datetime
-                now = datetime.datetime.utcnow()
-                til = now + datetime.timedelta(seconds=time_left)
+                
                 old_mesg=''
-                while now < til:
-                    left = til - now
-                    new_mesg = str(left)
-                    new_mesg = new_mesg.split('.')[0]
+                while pr[0] < 100:
+                    prs=pr[0]
+                    prs=str(prs)
+                    prs=prs.split('.')
+                    if len(prs) < 2:
+                        prs.append('00')
+                    while len(prs[1]) < 2:
+                        prs[1] += '0'
+                    while len(prs[0]) < 3:
+                        prs[0] = '0' + prs[0]
+                    prs='.'.join(prs)
+                    new_mesg = str(f'{prs}%')                    
                     print('',end='\r',file=stderr)
                     
                     print(' ' * len(old_mesg),end='\r',file=stderr)                
@@ -144,8 +144,7 @@ def main():
                     old_mesg=new_mesg
                     
                     from time import sleep
-                    sleep(1)
-                    now = datetime.datetime.utcnow()
+                    sleep(1)                    
             thy = th(target=timer)
             thy.start()                    
 if __name__ == '__main__':

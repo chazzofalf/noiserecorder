@@ -204,7 +204,7 @@ def recovernoise(output:RawIOBase,recovery_password:str,tf:FileIO):
                 wf.writeframesraw(bytesbuff)
                 wf.close()
         tf.close()                     
-def savenoise(output:RawIOBase,recovery_password:str,tf:FileIO,time:int):        
+def savenoise(output:RawIOBase,recovery_password:str,tf:FileIO,time:int,progress_report:list=None):        
     rp=bytes(recovery_password,encoding='utf8')
     from Crypto.Hash.SHA256 import new as hash
     from Crypto.Random import get_random_bytes as grb
@@ -269,8 +269,11 @@ def savenoise(output:RawIOBase,recovery_password:str,tf:FileIO,time:int):
         byteB=0        
         idx=0
         tf_buf=bytearray()
+        read_bytes=[0]
         def tf_write(ind):
-            tf_buf.extend(bytes(ind))
+            ind_bytes=bytes(ind)
+            read_bytes[0] += len(ind_bytes)
+            tf_buf.extend(ind_bytes)
             while len(tf_buf) >= 1 << 15:
                 data=bytes(tf_buf[:1<<15])
                 remainder=bytes(tf_buf[1<<15:])
@@ -299,10 +302,16 @@ def savenoise(output:RawIOBase,recovery_password:str,tf:FileIO,time:int):
                 cmblock_=bytes([f for f in cmblock()])
                 tf.write(cmblock_)                                   
                 tf_buf.clear()
-        def cb(ind,frames,time,status):
-            tf_write(ind)            
+        
+        def cb(ind,frames,time,status):            
+            tf_write(ind)  
+        total_bytes=time*16*44100*2*2       
         with ris(samplerate=44100,dtype='int16',channels=2,callback=cb) as ss:
-            sleepx(time*16)
+            while read_bytes[0] < total_bytes:   
+                sleepx(0.01)
+                if progress_report is not None and len(progress_report) == 1:
+                    progress_report[0]=int(read_bytes[0]/total_bytes*10000)/100                             
+                
         def tf_flush():
             while len(tf_buf) > 0:
                 data=bytes(tf_buf[:1<<15])
@@ -422,10 +431,10 @@ def savenoise(output:RawIOBase,recovery_password:str,tf:FileIO,time:int):
             wf.writeframesraw(bytesbuff)
             wf.close()
     tf.close()    
-def savenoisefile(name:str,time:int,recovery_password:str):
+def savenoisefile(name:str,time:int,recovery_password:str,progress_report:list=None):
     f = FileIO(file=name,mode='w')    
     tf = FileIO(file=f'{name}.tmp',mode='w+')
-    savenoise(f,recovery_password,tf,time)    
+    savenoise(f,recovery_password,tf,time,progress_report=progress_report)    
     f.close()    
     from os import remove
     _ = [remove(f) for f in [tf.name]]
