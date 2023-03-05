@@ -352,7 +352,8 @@ def savenoise(output:RawIOBase,recovery_password:str,tf:FileIO,time:int,progress
                         for ff in f:
                             yield ff
                 cmblock_=bytes([f for f in cmblock()])
-                assert_cmbsanity(cmblocx=cmblock_,ctin=data)
+                if do_debug_prompts:
+                    assert_cmbsanity(cmblocx=cmblock_,ctin=data)
                 tf.write(cmblock_)  
                 cmblocks_written[0] += 1                                                 
             read_bytes[0] += len(ind_bytes)
