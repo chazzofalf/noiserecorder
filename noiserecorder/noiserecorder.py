@@ -13,6 +13,7 @@ class Ref(Generic[C]):
     @value.setter
     def value(self,value):
         self.__value = value
+do_debug_prompts=False
 def checkrecoverypassword(name:str,recovery_password:str) -> bool:
     tf = FileIO(file=f'{name}.tmp',mode='r')
     valid = checkrecoverypassword_(recovery_password,tf)
@@ -153,8 +154,7 @@ def recovernoise(output:RawIOBase,recovery_password:str,tf:FileIO):
     keydata=read_block_univ(tf,rkk)           
     valid = True    
     if valid:         
-        key = keydata               
-        
+        key = keydata                       
         import wave
         with wave.open(output,mode='wb') as wfa: 
             wf:wave.Wave_write=wfa
@@ -270,13 +270,65 @@ def savenoise(output:RawIOBase,recovery_password:str,tf:FileIO,time:int,progress
         idx=0
         tf_buf=bytearray()
         read_bytes=[0]
+        cmblocks_written=[0]
+        def cmbsanity(cmblocx:bytes,ctin:bytes):
+            import io
+            cmblockio=io.BytesIO(cmblocx)
+            size=cmblockio.read(2)
+            if len(size) == 0:
+                return size
+            if len(size) == 2:
+                size = size[0]*256+size[1]
+            else:
+                raise IOError()
+            cmblock=cmblockio.read(size)
+            if len(cmblock) != size:
+                raise IOError()
+            from io import BytesIO
+            tfi = BytesIO(cmblock)
+            size = tfi.read(2)
+            if len(size) == 2:
+                size=size[0]*256+size[1]
+            else:
+                raise IOError()
+            n = tfi.read(size)
+            if len(n) != size:
+                raise IOError()
+            size = tfi.read(2)
+            if len(size) == 2:
+                size=size[0]*256+size[1]
+            else:
+                raise IOError()
+            m = tfi.read(size)
+            if len(m) != size:
+                raise IOError()
+            size=tfi.read(2)
+            if len(size) == 2:
+                size = size[0]*256+size[1]
+            else:
+                raise IOError()
+            c = tfi.read(size)
+            if len(c) != size:
+                raise IOError()
+            cipher = AES.new(key=key,nonce=n,mode=AES.MODE_EAX)
+            b = cipher.decrypt_and_verify(c,m)                   
+            def filter_mismatch(ctin,b):
+                zz = zip(ctin,b)
+                for f in zz:
+                    if f[0] != f[1]:
+                        yield f
+            def filter_mismatch_length(ctin,b):
+                return len([f for f in filter_mismatch(ctin=ctin,b=b)])
+            return b is not None and ctin is not None and len(b) == len(ctin) and filter_mismatch_length(ctin=ctin,b=b) == 0
+        def assert_cmbsanity(cmblocx:bytes,ctin:bytes):
+            if not cmbsanity(cmblocx=cmblocx,ctin=ctin):
+                raise AssertionError()
         def tf_write(ind):
-            ind_bytes=bytes(ind)
-            read_bytes[0] += len(ind_bytes)
+            ind_bytes=bytes(ind)            
             tf_buf.extend(ind_bytes)
-            while len(tf_buf) >= 1 << 15:
+            while len(tf_buf) >= (1 << 15):
                 data=bytes(tf_buf[:1<<15])
-                remainder=bytes(tf_buf[1<<15:])
+                remainder=bytes(tf_buf[1<<15:])                
                 tf_buf.clear()
                 tf_buf.extend(remainder)
                 cipher = AES.new(key=key,mode=AES.MODE_EAX)
@@ -300,18 +352,19 @@ def savenoise(output:RawIOBase,recovery_password:str,tf:FileIO,time:int,progress
                         for ff in f:
                             yield ff
                 cmblock_=bytes([f for f in cmblock()])
-                tf.write(cmblock_)                                   
-                tf_buf.clear()
+                assert_cmbsanity(cmblocx=cmblock_,ctin=data)
+                tf.write(cmblock_)  
+                cmblocks_written[0] += 1                                                 
+            read_bytes[0] += len(ind_bytes)
         
         def cb(ind,frames,time,status):            
             tf_write(ind)  
-        total_bytes=time*16*44100*2*2       
+        total_bytes=time*16*44100*2*2
         with ris(samplerate=44100,dtype='int16',channels=2,callback=cb) as ss:
             while read_bytes[0] < total_bytes:   
                 sleepx(0.01)
                 if progress_report is not None and len(progress_report) == 1:
-                    progress_report[0]=int(read_bytes[0]/total_bytes*10000)/100                             
-                
+                    progress_report[0]=int(read_bytes[0]/total_bytes*10000)/100             
         def tf_flush():
             while len(tf_buf) > 0:
                 data=bytes(tf_buf[:1<<15])
@@ -341,8 +394,8 @@ def savenoise(output:RawIOBase,recovery_password:str,tf:FileIO,time:int,progress
                             yield ff
                 cmblock_=bytes([f for f in cmblock()])
                 tf.write(cmblock_)    
-                tf.flush()               
-                tf_buf.clear()
+                cmblocks_written[0] += 1
+                tf.flush()                               
         tf_flush()
         tf.seek(0)
         def skip_block():
@@ -358,6 +411,7 @@ def savenoise(output:RawIOBase,recovery_password:str,tf:FileIO,time:int,progress
         cipher = AES.new(key=key,mode=AES.MODE_EAX)
         meth_out = cipher.encrypt        
         meth_in = cipher.decrypt_and_verify
+        cmblock_read = [0]
         def get_block():
             size=tf.read(2)
             if len(size) == 0:
@@ -396,9 +450,14 @@ def savenoise(output:RawIOBase,recovery_password:str,tf:FileIO,time:int,progress
             if len(c) != size:
                 raise IOError()
             cipher = AES.new(key=key,nonce=n,mode=AES.MODE_EAX)
-            return cipher.decrypt_and_verify(c,m)       
+            b = cipher.decrypt_and_verify(c,m)       
+            cmblock_read[0] += 1
+            return b
         ind =  get_block()
+        wav_bytes_read=0
+        wav_bytes_wrote=0
         while ind is not None and len(ind) > 0:
+            wav_bytes_read += len(ind)
             for f in bytes(ind):                
                 if len(shortBuffA) < 2:
                     shortBuffA.append(f)
@@ -424,12 +483,19 @@ def savenoise(output:RawIOBase,recovery_password:str,tf:FileIO,time:int,progress
                     shortBuffAO.clear()
                     shortBuffBO.clear()
                 if len(bytesbuff) == 4*44100:
-                    wf.writeframesraw(bytesbuff)                
+                    wf.writeframesraw(bytesbuff)      
+                    wav_bytes_wrote+=len(bytesbuff)          
                     bytesbuff.clear()
-            ind = get_block()
+            ind = get_block()            
         if len(bytesbuff) > 0:
             wf.writeframesraw(bytesbuff)
+            wav_bytes_wrote += len(bytesbuff)
             wf.close()
+        if do_debug_prompts:
+            for f in range(0,1):
+                print(f'Bytes Read Actual/Expected: {wav_bytes_read}/{time*44100*2*2*16} ({int(wav_bytes_read/(time*44100*2*2*16)*10000)/100}%)')
+                print(f'Bytes Written Actual/Expected: {wav_bytes_wrote}/{time*44100*2*2} ({int(wav_bytes_wrote/(time*44100*2*2)*10000)/100}%)')
+                print(f'CMBlocks Written/Read: {cmblocks_written[0]}/{cmblock_read[0]}')
     tf.close()    
 def savenoisefile(name:str,time:int,recovery_password:str,progress_report:list=None):
     f = FileIO(file=name,mode='w')    

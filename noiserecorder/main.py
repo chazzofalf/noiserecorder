@@ -135,16 +135,17 @@ def main():
                     while len(prs[0]) < 3:
                         prs[0] = '0' + prs[0]
                     prs='.'.join(prs)
-                    new_mesg = str(f'{prs}%')                    
-                    print('',end='\r',file=stderr)
-                    
-                    print(' ' * len(old_mesg),end='\r',file=stderr)                
-                    print(new_mesg,end='\r',file=stderr)
-                    
-                    old_mesg=new_mesg
+                    new_mesg = str(f'{prs}%') 
+                    if new_mesg != old_mesg:                   
+                        print('',end='\r',file=stderr)
+                        
+                        print(' ' * len(old_mesg),end='\r',file=stderr)                
+                        print(new_mesg,end='\r',file=stderr)
+                        
+                        old_mesg=new_mesg
                     
                     from time import sleep
-                    sleep(1)                    
+                    sleep(1)                                 
             thy = th(target=timer)
             thy.start()                    
 if __name__ == '__main__':
