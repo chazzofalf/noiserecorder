@@ -117,12 +117,14 @@ def main():
             
             from threading import Thread as th
             def call():                
-                snf(file,time,rp,pr)
+                snf(file,time,rp,pr,pc)
             pr=[0]
+            pc=[0]
             thx = th(target=call)
             thx.start()
             def timer():                
-                
+                print('Recording: ')
+                print()
                 old_mesg=''
                 while pr[0] < 100:
                     prs=pr[0]
@@ -145,7 +147,35 @@ def main():
                         old_mesg=new_mesg
                     
                     from time import sleep
-                    sleep(1)                                 
+                    sleep(1)  
+                print('[Done Recording]') 
+                print('Converting: ')
+                print()
+                while pc[0] < 100:
+                    prs=pc[0]
+                    prs=str(prs)
+                    prs=prs.split('.')
+                    if len(prs) < 2:
+                        prs.append('00')
+                    while len(prs[1]) < 2:
+                        prs[1] += '0'
+                    while len(prs[0]) < 3:
+                        prs[0] = '0' + prs[0]
+                    prs='.'.join(prs)
+                    new_mesg = str(f'{prs}%') 
+                    if new_mesg != old_mesg:                   
+                        print('',end='\r',file=stderr)
+                        
+                        print(' ' * len(old_mesg),end='\r',file=stderr)                
+                        print(new_mesg,end='\r',file=stderr)
+                        
+                        old_mesg=new_mesg
+                    
+                    from time import sleep
+                    sleep(1) 
+                print('',end='\r',file=stderr)
+                print(' ' * len(old_mesg),end='\r',file=stderr)    
+                print('[Done Converting]')                     
             thy = th(target=timer)
             thy.start()                    
 if __name__ == '__main__':
