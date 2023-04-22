@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='noiserecorder',
-      version='0.2',
+      version='0.4',
       description='Atmospheric Noise Gatherer',
       author='Charles Montgomery',
       author_email='charles.montgomery@charter.net',
