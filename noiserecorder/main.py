@@ -1,6 +1,6 @@
 from getpass import getpass
 def main():   
-    version='0.0'
+    version='0.4'
     product='Noise Recorder'
     author='Charles T. Montgomery'
     email='charles.montgomery@charter.net'
