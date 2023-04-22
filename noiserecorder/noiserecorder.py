@@ -486,7 +486,7 @@ def savenoise(output:RawIOBase,recovery_password:str,tf:FileIO,time:int,progress
                     wf.writeframesraw(bytesbuff)      
                     wav_bytes_wrote+=len(bytesbuff)          
                     bytesbuff.clear()
-            convert_report[0] = cmblock_read[0]/ cmblocks_written[0] * 100
+            convert_report[0] = int(cmblock_read[0]/ cmblocks_written[0] * 10000)/ 100
             ind = get_block()            
         if len(bytesbuff) > 0:
             wf.writeframesraw(bytesbuff)
